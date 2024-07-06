@@ -1,0 +1,75 @@
+# Utility to import a CSV file into Splitwise
+# Usage: python3 import.py <csv file> <group id>
+
+import sys
+import csv
+import os
+import logging
+from time import sleep
+import requests
+from splitwise import Splitwise
+from splitwise.expense import Expense
+from splitwise.user import ExpenseUser
+
+def main():
+    # Create splitwise object and args
+    args = sys.argv[1:]
+    sObj = Splitwise(os.getenv("SPLITWISE_API_KEY"), os.getenv("SPLITWISE_API_SECRET"), api_key=os.getenv("SPLITWISE_API_TOKEN"))
+    print(sObj.getCurrentUser().__dict__)
+    group_id = 45893371
+    tiana_id = 66994282
+    zach_id = 64300808
+
+    # pull in CSV from args[1] and convert to list of dicts
+    converted = []
+    tag_name = args[1]
+    with open(args[0], newline='') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            if row['Tags'] == tag_name:
+                converted.append(row)
+                print(row)
+
+
+    def create_expense(expense_data):
+        """
+        Create an expense in Splitwise
+        :param expense_data: dict of expense data
+        :return: None
+        """
+        request_headers = {
+            'Authorization': 'Bearer ' + 'i6BLdjIfIkoZOVS8HCzsf01NqODmRdHdScTgwCs3',
+            'Content-Type': 'application/json'
+        }
+        r = requests.post('https://secure.splitwise.com/api/v3.0/create_expense', headers=request_headers, json=expense_data)
+        print(r.status_code)
+        if r.status_code == 200:
+            print("Successfully added expense")
+            print("Expense details: " + expense_data.__str__())
+            print(r.text)
+        else:
+            print("Error adding expense")
+            print(r.status_code)
+            print(r.text)
+    
+    for expense in converted:
+        print(float(expense['Amount']) * -1)
+        expense_data = {
+            "cost": str(float(expense['Amount']) * -1),
+            "currency_code": "USD",
+            "description": expense['Description'] + " - Auto imported",
+            "details": "This expense was automatically imported from a CSV file from Zach's expenses",
+            "group_id": group_id,
+            "date": expense['Date'],
+            "split_equally": True,
+        }
+        create_expense(expense_data)
+        sleep(1)
+
+
+
+
+
+
+if __name__ == "__main__":
+    main()
